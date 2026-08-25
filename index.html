@@ -66,30 +66,6 @@
 
   .hint{ text-align:center; font-size:11px; color:var(--muted); margin:8px 0 0; min-height:14px; }
 
-  .credits-badge{ margin-top:2px; font-size:11.5px; color:var(--amber-soft); background:rgba(255,157,92,0.12);
-    border:1px solid rgba(255,157,92,0.3); border-radius:12px; padding:3px 10px; cursor:pointer;
-    pointer-events:auto; display:inline-block; }
-
-  .overlay-panel{ position:fixed; inset:0; background:rgba(5,10,16,0.82); display:flex; align-items:center;
-    justify-content:center; z-index:20; pointer-events:auto; padding:20px; }
-  .panel-inner{ background:#101c28; border:1px solid rgba(242,236,225,0.12); border-radius:20px;
-    padding:24px 20px; max-width:340px; width:100%; text-align:center; }
-  .panel-inner h3{ font-family:'Quicksand',sans-serif; margin:0 0 16px; font-size:18px; }
-  .pack-btn{ display:block; width:100%; margin-bottom:10px; padding:12px; border-radius:14px;
-    border:1px solid rgba(255,157,92,0.35); background:rgba(255,157,92,0.1); color:var(--ink);
-    font-family:'Inter'; font-size:14.5px; }
-  #payerForm input{ display:block; width:100%; margin-bottom:10px; background:rgba(255,255,255,0.05);
-    border:1px solid rgba(242,236,225,0.15); border-radius:12px; padding:10px 14px; color:var(--ink);
-    font-family:'Inter'; font-size:14px; }
-  #payerForm button, #copyPixBtn{ width:100%; padding:11px; border-radius:12px; border:none;
-    background:var(--amber); color:#20120a; font-weight:600; font-family:'Inter'; margin-top:4px; }
-  #pixQr{ width:170px; height:170px; margin:8px auto; display:block; border-radius:12px; background:#fff; padding:6px; }
-  #pixCode{ width:100%; height:56px; font-size:11px; background:rgba(255,255,255,0.05); color:var(--muted);
-    border:1px solid rgba(242,236,225,0.12); border-radius:10px; padding:8px; margin-bottom:8px; resize:none; }
-  #pixStatus{ font-size:12.5px; color:var(--muted); margin:10px 0 0; }
-  .close-btn{ margin-top:14px; background:none; border:none; color:var(--muted); font-size:13px;
-    text-decoration:underline; }
-
   button:focus-visible, input:focus-visible{ outline:2px solid var(--teal); outline-offset:3px; }
 </style>
 </head>
@@ -101,7 +77,6 @@
   <header class="hud">
     <div class="companion-name"><span class="ember-dot"></span>Lumi</div>
     <div class="status" id="status">toque para conversar</div>
-    <div class="credits-badge" id="creditsBadge">— créditos</div>
   </header>
 
   <div class="caption" id="caption" aria-live="polite"></div>
@@ -129,29 +104,6 @@
     </form>
 
     <p class="hint" id="hint"></p>
-  </div>
-</div>
-
-<div class="overlay-panel" id="buyPanel" hidden>
-  <div class="panel-inner">
-    <h3>Comprar créditos</h3>
-    <div id="packStep">
-      <button class="pack-btn" data-pack="small">R$5 — 50 mensagens</button>
-      <button class="pack-btn" data-pack="medium">R$10 — 120 mensagens</button>
-    </div>
-    <form id="payerForm" hidden>
-      <input id="payerName" placeholder="Nome completo" autocomplete="name" />
-      <input id="payerEmail" placeholder="E-mail" type="email" autocomplete="email" />
-      <input id="payerCpf" placeholder="CPF (só números)" inputmode="numeric" />
-      <button type="submit">Gerar Pix</button>
-    </form>
-    <div id="pixStep" hidden>
-      <img id="pixQr" alt="QR Code Pix" />
-      <textarea id="pixCode" readonly></textarea>
-      <button id="copyPixBtn" type="button">Copiar código Pix</button>
-      <p id="pixStatus">Aguardando pagamento...</p>
-    </div>
-    <button id="closeBuyBtn" class="close-btn" type="button">Fechar</button>
   </div>
 </div>
 
@@ -446,21 +398,6 @@ const SYSTEM_PROMPT = `Você é Lumi, um pequeno espírito de luz — um amigo v
 
 let history = [];
 
-function getUserId(){
-  try{
-    let id = localStorage.getItem('lumi_user_id');
-    if(!id){
-      id = 'u_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem('lumi_user_id', id);
-    }
-    return id;
-  }catch(e){
-    if(!window.__lumiTempId) window.__lumiTempId = 'u_' + Math.random().toString(36).slice(2);
-    return window.__lumiTempId;
-  }
-}
-const userId = getUserId();
-
 async function handleUserMessage(text){
   history.push({ role:'user', content:text });
   setState('thinking');
@@ -479,32 +416,24 @@ async function handleUserMessage(text){
       || 'Hmm, não consegui pensar em nada agora.';
     history.push({ role:'assistant', content: replyText });
     speak(replyText);
-    refreshCredits();
   } catch(err){
     history.pop();
     console.error('Lumi API error:', err);
-    if(err.status === 402){
-      speak('Preciso de mais créditos para continuar. Toca ali em cima pra comprar mais.');
-      openBuyPanel();
-    } else {
-      setHint('Não consegui me conectar ao servidor. Erro: ' + (err.message || 'desconhecido'));
-      speak('Ops, não consegui falar com o servidor agora. Pode tentar de novo?');
-    }
+    setHint('Não consegui me conectar ao servidor. Erro: ' + (err.message || 'desconhecido'));
+    speak('Ops, não consegui falar com o servidor agora. Pode tentar de novo?');
   }
 }
 
 async function callClaude(url){
-  const payload = {
-    model:'claude-sonnet-4-6',
-    max_tokens:1000,
-    system: SYSTEM_PROMPT,
-    messages: history
-  };
-  if(url.startsWith('/')) payload.userId = userId;
   const res = await fetch(url, {
     method:'POST',
     headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      system: SYSTEM_PROMPT,
+      messages: history
+    })
   });
   if(!res.ok){
     const errBody = await res.json().catch(() => ({}));
@@ -514,129 +443,6 @@ async function callClaude(url){
   }
   return res.json();
 }
-
-/* ---------- credits + Pix purchase panel ---------- */
-const creditsBadge = document.getElementById('creditsBadge');
-const buyPanel = document.getElementById('buyPanel');
-let currentCredits = null;
-let selectedPack = null;
-let pollTimer = null;
-
-async function refreshCredits(){
-  try{
-    const res = await fetch(`/.netlify/functions/check-credits?userId=${encodeURIComponent(userId)}`);
-    const data = await res.json();
-    currentCredits = data.credits;
-    creditsBadge.textContent = currentCredits + (currentCredits === 1 ? ' crédito' : ' créditos');
-  }catch(e){ creditsBadge.textContent = ''; }
-}
-refreshCredits();
-
-creditsBadge.addEventListener('click', openBuyPanel);
-document.getElementById('closeBuyBtn').addEventListener('click', closeBuyPanel);
-
-function openBuyPanel(){ buyPanel.hidden = false; }
-function closeBuyPanel(){
-  buyPanel.hidden = true;
-  clearInterval(pollTimer);
-  try{ localStorage.removeItem('lumi_pending_payment'); }catch(e){}
-  document.getElementById('packStep').hidden = false;
-  document.getElementById('payerForm').hidden = true;
-  document.getElementById('pixStep').hidden = true;
-  document.getElementById('payerForm').reset();
-}
-
-document.querySelectorAll('.pack-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    selectedPack = btn.dataset.pack;
-    document.getElementById('packStep').hidden = true;
-    document.getElementById('payerForm').hidden = false;
-  });
-});
-
-document.getElementById('payerForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('payerName').value.trim();
-  const email = document.getElementById('payerEmail').value.trim();
-  const cpf = document.getElementById('payerCpf').value.trim();
-  if(!name || !email || !cpf) return;
-
-  document.getElementById('payerForm').hidden = true;
-  document.getElementById('pixStep').hidden = false;
-  document.getElementById('pixStatus').textContent = 'Gerando Pix...';
-
-  try{
-    const res = await fetch('/.netlify/functions/create-payment', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ userId, packId: selectedPack, name, email, cpf })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data?.error?.message || 'Falha ao gerar Pix');
-
-    document.getElementById('pixQr').src = 'data:image/png;base64,' + data.qrCodeBase64;
-    document.getElementById('pixCode').value = data.qrCode;
-    document.getElementById('pixStatus').textContent = 'Escaneie o QR Code ou copie o código. Aguardando pagamento...';
-    try{
-      localStorage.setItem('lumi_pending_payment', JSON.stringify({
-        paymentId: data.paymentId,
-        qrCode: data.qrCode,
-        qrCodeBase64: data.qrCodeBase64,
-        createdAt: Date.now()
-      }));
-    }catch(e){}
-    pollForCredit(data.paymentId);
-  }catch(err){
-    document.getElementById('pixStatus').textContent = 'Erro: ' + err.message;
-  }
-});
-
-document.getElementById('copyPixBtn').addEventListener('click', () => {
-  const code = document.getElementById('pixCode');
-  code.select();
-  navigator.clipboard?.writeText(code.value).catch(()=>{});
-});
-
-function pollForCredit(paymentId){
-  clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    try{
-      const res = await fetch(`/.netlify/functions/check-payment?paymentId=${encodeURIComponent(paymentId)}`);
-      const data = await res.json();
-      if(data.status === 'approved'){
-        clearInterval(pollTimer);
-        await refreshCredits();
-        try{ localStorage.removeItem('lumi_pending_payment'); }catch(e){}
-        document.getElementById('pixStatus').textContent = 'Pagamento confirmado! Créditos adicionados.';
-        setTimeout(closeBuyPanel, 1800);
-      } else if(data.status === 'cancelled' || data.status === 'rejected'){
-        clearInterval(pollTimer);
-        document.getElementById('pixStatus').textContent = 'O pagamento não foi concluído. Feche e tente gerar um novo Pix.';
-      }
-    }catch(e){ /* tenta de novo no próximo ciclo */ }
-  }, 4000);
-}
-
-function restorePendingPayment(){
-  try{
-    const raw = localStorage.getItem('lumi_pending_payment');
-    if(!raw) return;
-    const pending = JSON.parse(raw);
-    if(Date.now() - pending.createdAt > 30*60*1000){
-      localStorage.removeItem('lumi_pending_payment');
-      return;
-    }
-    buyPanel.hidden = false;
-    document.getElementById('packStep').hidden = true;
-    document.getElementById('payerForm').hidden = true;
-    document.getElementById('pixStep').hidden = false;
-    document.getElementById('pixQr').src = 'data:image/png;base64,' + pending.qrCodeBase64;
-    document.getElementById('pixCode').value = pending.qrCode;
-    document.getElementById('pixStatus').textContent = 'Retomando... verificando pagamento.';
-    pollForCredit(pending.paymentId);
-  }catch(e){}
-}
-restorePendingPayment();
 
 /* ---------- greeting ---------- */
 addEventListener('load', () => {
