@@ -539,7 +539,6 @@ function openBuyPanel(){ buyPanel.hidden = false; }
 function closeBuyPanel(){
   buyPanel.hidden = true;
   clearInterval(pollTimer);
-  try{ localStorage.removeItem('lumi_pending_payment'); }catch(e){}
   document.getElementById('packStep').hidden = false;
   document.getElementById('payerForm').hidden = true;
   document.getElementById('pixStep').hidden = true;
@@ -577,15 +576,6 @@ document.getElementById('payerForm').addEventListener('submit', async (e) => {
     document.getElementById('pixQr').src = 'data:image/png;base64,' + data.qrCodeBase64;
     document.getElementById('pixCode').value = data.qrCode;
     document.getElementById('pixStatus').textContent = 'Escaneie o QR Code ou copie o código. Aguardando pagamento...';
-    try{
-      localStorage.setItem('lumi_pending_payment', JSON.stringify({
-        paymentId: data.paymentId,
-        qrCode: data.qrCode,
-        qrCodeBase64: data.qrCodeBase64,
-        creditsBefore: currentCredits || 0,
-        createdAt: Date.now()
-      }));
-    }catch(e){}
     pollForCredit();
   }catch(err){
     document.getElementById('pixStatus').textContent = 'Erro: ' + err.message;
@@ -598,40 +588,18 @@ document.getElementById('copyPixBtn').addEventListener('click', () => {
   navigator.clipboard?.writeText(code.value).catch(()=>{});
 });
 
-function pollForCredit(beforeOverride){
-  const before = (typeof beforeOverride === 'number') ? beforeOverride : (currentCredits || 0);
+function pollForCredit(){
+  const before = currentCredits || 0;
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
     await refreshCredits();
     if(currentCredits > before){
       clearInterval(pollTimer);
-      try{ localStorage.removeItem('lumi_pending_payment'); }catch(e){}
       document.getElementById('pixStatus').textContent = 'Pagamento confirmado! Créditos adicionados.';
       setTimeout(closeBuyPanel, 1800);
     }
   }, 4000);
 }
-
-function restorePendingPayment(){
-  try{
-    const raw = localStorage.getItem('lumi_pending_payment');
-    if(!raw) return;
-    const pending = JSON.parse(raw);
-    if(Date.now() - pending.createdAt > 30*60*1000){
-      localStorage.removeItem('lumi_pending_payment');
-      return;
-    }
-    buyPanel.hidden = false;
-    document.getElementById('packStep').hidden = true;
-    document.getElementById('payerForm').hidden = true;
-    document.getElementById('pixStep').hidden = false;
-    document.getElementById('pixQr').src = 'data:image/png;base64,' + pending.qrCodeBase64;
-    document.getElementById('pixCode').value = pending.qrCode;
-    document.getElementById('pixStatus').textContent = 'Retomando... aguardando confirmação do pagamento.';
-    pollForCredit(pending.creditsBefore);
-  }catch(e){}
-}
-restorePendingPayment();
 
 /* ---------- greeting ---------- */
 addEventListener('load', () => {
