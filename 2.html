@@ -72,11 +72,8 @@
 
   .overlay-panel{ position:fixed; inset:0; background:rgba(5,10,16,0.82); display:flex; align-items:center;
     justify-content:center; z-index:20; pointer-events:auto; padding:20px; }
-  .panel-inner{ position:relative; background:#101c28; border:1px solid rgba(242,236,225,0.12); border-radius:20px;
+  .panel-inner{ background:#101c28; border:1px solid rgba(242,236,225,0.12); border-radius:20px;
     padding:24px 20px; max-width:340px; width:100%; text-align:center; }
-  .close-x{ position:absolute; top:10px; right:10px; width:38px; height:38px; border-radius:50%;
-    border:none; background:rgba(255,255,255,0.08); color:var(--ink); font-size:16px;
-    display:flex; align-items:center; justify-content:center; line-height:1; }
   .panel-inner h3{ font-family:'Quicksand',sans-serif; margin:0 0 16px; font-size:18px; }
   .pack-btn{ display:block; width:100%; margin-bottom:10px; padding:12px; border-radius:14px;
     border:1px solid rgba(255,157,92,0.35); background:rgba(255,157,92,0.1); color:var(--ink);
@@ -90,8 +87,8 @@
   #pixCode{ width:100%; height:56px; font-size:11px; background:rgba(255,255,255,0.05); color:var(--muted);
     border:1px solid rgba(242,236,225,0.12); border-radius:10px; padding:8px; margin-bottom:8px; resize:none; }
   #pixStatus{ font-size:12.5px; color:var(--muted); margin:10px 0 0; }
-  .close-btn{ margin-top:14px; padding:10px 16px; min-height:44px; background:none; border:none;
-    color:var(--muted); font-size:13px; text-decoration:underline; }
+  .close-btn{ margin-top:14px; background:none; border:none; color:var(--muted); font-size:13px;
+    text-decoration:underline; }
 
   button:focus-visible, input:focus-visible{ outline:2px solid var(--teal); outline-offset:3px; }
 </style>
@@ -137,7 +134,6 @@
 
 <div class="overlay-panel" id="buyPanel" hidden>
   <div class="panel-inner">
-    <button id="closeBuyX" class="close-x" type="button" aria-label="Fechar">✕</button>
     <h3>Comprar créditos</h3>
     <div id="packStep">
       <button class="pack-btn" data-pack="small">R$5 — 50 mensagens</button>
@@ -538,8 +534,6 @@ refreshCredits();
 
 creditsBadge.addEventListener('click', openBuyPanel);
 document.getElementById('closeBuyBtn').addEventListener('click', closeBuyPanel);
-document.getElementById('closeBuyX').addEventListener('click', closeBuyPanel);
-buyPanel.addEventListener('click', (e) => { if(e.target === buyPanel) closeBuyPanel(); });
 
 function openBuyPanel(){ buyPanel.hidden = false; }
 function closeBuyPanel(){
@@ -640,7 +634,13 @@ function restorePendingPayment(){
       localStorage.removeItem('lumi_pending_payment');
       return;
     }
-    // Retoma a verificação em segundo plano, sem forçar o painel a abrir por cima da tela.
+    buyPanel.hidden = false;
+    document.getElementById('packStep').hidden = true;
+    document.getElementById('payerForm').hidden = true;
+    document.getElementById('pixStep').hidden = false;
+    document.getElementById('pixQr').src = 'data:image/png;base64,' + pending.qrCodeBase64;
+    document.getElementById('pixCode').value = pending.qrCode;
+    document.getElementById('pixStatus').textContent = 'Retomando... verificando pagamento.';
     pollForCredit(pending.paymentId);
   }catch(e){}
 }
