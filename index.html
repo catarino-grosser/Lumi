@@ -649,8 +649,12 @@ function pollForCredit(paymentId, createdAt){
         clearInterval(pollTimer);
         await refreshCredits();
         try{ localStorage.removeItem('lumi_pending_payment'); }catch(e){}
-        document.getElementById('pixStatus').textContent = 'Pagamento confirmado! Créditos adicionados.';
-        setTimeout(closeBuyPanel, 1800);
+        if(data.credited === false){
+          document.getElementById('pixStatus').textContent = 'Pagamento confirmado! Seus créditos estão sendo processados, atualize a página em instantes.';
+        } else {
+          document.getElementById('pixStatus').textContent = 'Pagamento confirmado! Créditos adicionados.';
+        }
+        setTimeout(closeBuyPanel, 2200);
       } else if(data.status === 'cancelled' || data.status === 'rejected'){
         clearInterval(pollTimer);
         document.getElementById('pixStatus').textContent = 'Pagamento não concluído (status: ' + data.status + '). Gere um novo Pix.';
