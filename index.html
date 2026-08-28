@@ -36,9 +36,9 @@
   .status.listening{ color:var(--teal); }
   .status.speaking{ color:var(--amber-soft); }
 
-  .caption{ align-self:center; max-width:520px; text-align:center; font-size:16.5px; line-height:1.5;
+  .caption{ max-width:520px; max-height:26vh; overflow-y:auto; text-align:center; font-size:16.5px; line-height:1.5;
     color:var(--ink); background:rgba(6,12,18,0.78); backdrop-filter:blur(8px);
-    border-radius:16px; padding:10px 18px; margin:0 16px;
+    border-radius:16px; padding:10px 18px; margin:0 auto 14px; width:100%;
     box-shadow:0 6px 24px rgba(0,0,0,0.3);
     opacity:0; transition:opacity .45s ease; }
   .caption.show{ opacity:1; }
@@ -79,9 +79,9 @@
     <div class="status" id="status">toque para conversar</div>
   </header>
 
-  <div class="caption" id="caption" aria-live="polite"></div>
-
   <div>
+    <div class="caption" id="caption" aria-live="polite"></div>
+
     <div class="controls">
       <button class="icon-btn" id="keyboardBtn" aria-label="Digitar mensagem" title="Digitar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
